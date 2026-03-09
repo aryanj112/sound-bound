@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import ytdl from "ytdl-core";
+import { promisify } from "util";
+import { exec } from "child_process";
+import { readFile, unlink } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+
+const execAsync = promisify(exec);
 
 type CommunityRow = {
   id: string;
@@ -12,8 +18,6 @@ type DownloadResult = {
   buffer: Buffer;
   title: string;
   durationS: number;
-  contentType: string;
-  extension: string;
 };
 
 const BUCKET_NAME = process.env.SUPABASE_BUCKET ?? "community-sounds";
@@ -35,12 +39,14 @@ function getSupabaseAdmin() {
   });
 }
 
-async function downloadYoutubeAudio(
-  url: string
-): Promise<DownloadResult> {
-  const info = await ytdl.getInfo(url);
-  const durationS = parseInt(info.videoDetails.lengthSeconds, 10);
-  const title = info.videoDetails.title;
+async function downloadYoutubeAudio(url: string): Promise<DownloadResult> {
+  // 1. Probe metadata first — no download yet
+  const { stdout } = await execAsync(
+    `yt-dlp --dump-json --no-playlist "${url}"`
+  );
+  const info = JSON.parse(stdout);
+  const durationS: number = info.duration;
+  const title: string = info.title;
 
   if (durationS > MAX_DURATION_S) {
     throw new Error(
@@ -48,40 +54,21 @@ async function downloadYoutubeAudio(
     );
   }
 
-  const audioFormats = ytdl.filterFormats(info.formats, "audioonly");
-  const preferredFormat =
-    audioFormats
-      .filter((format) => Boolean(format.url))
-      .sort((left, right) => {
-        const leftBitrate = left.audioBitrate ?? 0;
-        const rightBitrate = right.audioBitrate ?? 0;
-        return rightBitrate - leftBitrate;
-      })[0];
+  // 2. Download to temp file
+  const baseName = join(tmpdir(), crypto.randomUUID());
+  await execAsync(
+    `yt-dlp --extract-audio --audio-format mp3 --output "${baseName}.%(ext)s" --no-playlist "${url}"`
+  );
 
-  if (!preferredFormat?.url) {
-    throw new Error("No audio-only format was available for this video.");
-  }
+  const tmpPath = `${baseName}.mp3`;
+  const buffer = await readFile(tmpPath);
+  await unlink(tmpPath).catch(() => null);
 
-  const response = await fetch(preferredFormat.url);
-  if (!response.ok) {
-    throw new Error(
-      `Audio download failed with status ${response.status} for itag ${preferredFormat.itag}.`
-    );
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  if (buffer.byteLength === 0) {
+  if (!buffer || buffer.byteLength === 0) {
     throw new Error("The downloaded audio file is empty.");
   }
 
-  const contentType =
-    preferredFormat.mimeType?.split(";")[0] ??
-    response.headers.get("content-type") ??
-    "audio/mpeg";
-  const extension = preferredFormat.container ?? "mp3";
-
-  return { buffer, title, durationS, contentType, extension };
+  return { buffer, title, durationS };
 }
 
 export async function GET() {
@@ -131,41 +118,35 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1. Download and convert audio
+  // 1. Download audio
   let buffer: Buffer;
   let title: string;
   let durationS: number;
-  let contentType: string;
-  let extension: string;
 
   try {
-    ({ buffer, title, durationS, contentType, extension } =
-      await downloadYoutubeAudio(rawUrl));
+    ({ buffer, title, durationS } = await downloadYoutubeAudio(rawUrl));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Download failed.";
-    console.error("community-sounds download failed", {
-      url: rawUrl,
-      message
-    });
+    console.error("community-sounds download failed", { url: rawUrl, message });
     return NextResponse.json({ error: message }, { status: 422 });
   }
 
   const fileSize = buffer.byteLength;
-  const fileName = `${crypto.randomUUID()}.${extension}`;
+  const fileName = `${crypto.randomUUID()}.mp3`;
 
   // 2. Upload to Supabase Storage
   const supabase = getSupabaseAdmin();
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET_NAME)
-    .upload(fileName, buffer, { contentType });
+    .upload(fileName, buffer, { contentType: "audio/mpeg" });
 
   if (uploadError) {
     console.error("community-sounds storage upload failed", {
       url: rawUrl,
       title,
       fileName,
-      message: uploadError.message
+      message: uploadError.message,
     });
     return NextResponse.json(
       { error: `Storage upload failed: ${uploadError.message}` },
@@ -180,16 +161,14 @@ export async function POST(request: Request) {
   const publicUrl = urlData.publicUrl;
 
   // 3. Insert row into DB
-  const { error: dbError } = await supabase
-    .from("community_sounds")
-    .insert({
-      title,
-      youtube_url: rawUrl,
-      storage_path: fileName,
-      public_url: publicUrl,
-      duration_s: durationS,
-      file_size: fileSize,
-    });
+  const { error: dbError } = await supabase.from("community_sounds").insert({
+    title,
+    youtube_url: rawUrl,
+    storage_path: fileName,
+    public_url: publicUrl,
+    duration_s: durationS,
+    file_size: fileSize,
+  });
 
   if (dbError) {
     await supabase.storage.from(BUCKET_NAME).remove([fileName]);
@@ -197,7 +176,7 @@ export async function POST(request: Request) {
       url: rawUrl,
       title,
       fileName,
-      message: dbError.message
+      message: dbError.message,
     });
     return NextResponse.json(
       { error: `Database insert failed: ${dbError.message}` },
