@@ -48,17 +48,19 @@ async function downloadYoutubeAudio(url: string): Promise<DownloadResult> {
   const durationS: number = info.duration;
   const title: string = info.title;
 
+  // 2. Download to temp file, trimming to MAX_DURATION_S if needed
+  const baseName = join(tmpdir(), crypto.randomUUID());
+
   if (durationS > MAX_DURATION_S) {
-    throw new Error(
-      `Audio is ${durationS}s — exceeds the ${MAX_DURATION_S}s maximum.`
+    // Use yt-dlp's --download-sections to trim to first MAX_DURATION_S seconds
+    await execAsync(
+      `yt-dlp --extract-audio --audio-format mp3 --download-sections "*0-${MAX_DURATION_S}" --output "${baseName}.%(ext)s" --no-playlist "${url}"`
+    );
+  } else {
+    await execAsync(
+      `yt-dlp --extract-audio --audio-format mp3 --output "${baseName}.%(ext)s" --no-playlist "${url}"`
     );
   }
-
-  // 2. Download to temp file
-  const baseName = join(tmpdir(), crypto.randomUUID());
-  await execAsync(
-    `yt-dlp --extract-audio --audio-format mp3 --output "${baseName}.%(ext)s" --no-playlist "${url}"`
-  );
 
   const tmpPath = `${baseName}.mp3`;
   const buffer = await readFile(tmpPath);
@@ -68,7 +70,8 @@ async function downloadYoutubeAudio(url: string): Promise<DownloadResult> {
     throw new Error("The downloaded audio file is empty.");
   }
 
-  return { buffer, title, durationS };
+  const trimmedDurationS = Math.min(durationS, MAX_DURATION_S);
+  return { buffer, title, durationS: trimmedDurationS };
 }
 
 export async function GET() {
