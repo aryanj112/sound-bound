@@ -1,0 +1,214 @@
+:root {
+  color-scheme: dark;
+  --bg: #120f1e;
+  --bg-secondary: #1f1630;
+  --panel: rgba(25, 22, 41, 0.82);
+  --panel-strong: rgba(39, 32, 61, 0.96);
+  --text: #f8f4ff;
+  --muted: #d2cae6;
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 122, 24, 0.2), transparent 28%),
+    radial-gradient(circle at 80% 20%, rgba(123, 44, 191, 0.24), transparent 24%),
+    linear-gradient(180deg, var(--bg) 0%, #09070f 100%);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.page-shell {
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(1.5rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 1rem;
+}
+
+.vine-panel,
+.custom-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.04), var(--panel-strong));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.75rem;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.vine-kicker {
+  margin: 0 0 0.8rem;
+  color: #ffb703;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vine-button {
+  width: 100%;
+  border: 1px solid rgba(255, 77, 109, 0.5);
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(circle at top, rgba(255, 77, 109, 0.28), transparent 55%),
+    linear-gradient(180deg, rgba(56, 26, 49, 0.98), rgba(31, 16, 33, 0.98));
+  color: var(--text);
+  padding: 1.4rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: center;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.4);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vine-button:active {
+  transform: scale(0.98);
+}
+
+.vine-button-active {
+  border-color: #ff4d6d;
+  box-shadow: 0 0 0 0.35rem rgba(255, 77, 109, 0.18), 0 22px 50px rgba(0, 0, 0, 0.42);
+}
+
+.vine-button:focus-visible,
+.apply-button:focus-visible,
+.audio-input:focus-visible,
+.upload-button:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.88);
+  outline-offset: 2px;
+}
+
+.vine-emoji {
+  font-size: 3.5rem;
+}
+
+.vine-title {
+  font-size: clamp(1.8rem, 7vw, 3rem);
+  font-weight: 900;
+}
+
+.vine-caption {
+  color: #ffd6de;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.vine-message,
+.custom-copy,
+.helper-text {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.vine-message {
+  margin: 0.9rem 0 0;
+  text-align: center;
+}
+
+.custom-panel h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.custom-copy {
+  margin: 0.7rem 0 1rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.url-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.audio-input,
+.apply-button,
+.upload-button {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.audio-input {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  background: rgba(10, 9, 16, 0.55);
+  color: var(--text);
+}
+
+.apply-button,
+.upload-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.apply-button {
+  width: 100%;
+}
+
+.upload-button {
+  margin-top: 0.9rem;
+  width: 100%;
+}
+
+.file-input {
+  display: none;
+}
+
+.helper-text {
+  margin: 0.9rem 0 0;
+  word-break: break-word;
+}
+
+@media (min-width: 760px) {
+  .page-shell {
+    padding: 1.5rem;
+  }
+
+  .vine-panel,
+  .custom-panel {
+    padding: 1.35rem;
+  }
+
+  .url-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .apply-button {
+    width: auto;
+    min-width: 8rem;
+  }
+}
