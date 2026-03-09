@@ -64,7 +64,9 @@ async function downloadYoutubeAudio(
 
   const response = await fetch(preferredFormat.url);
   if (!response.ok) {
-    throw new Error(`Audio download failed with status ${response.status}.`);
+    throw new Error(
+      `Audio download failed with status ${response.status} for itag ${preferredFormat.itag}.`
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
@@ -141,6 +143,10 @@ export async function POST(request: Request) {
       await downloadYoutubeAudio(rawUrl));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Download failed.";
+    console.error("community-sounds download failed", {
+      url: rawUrl,
+      message
+    });
     return NextResponse.json({ error: message }, { status: 422 });
   }
 
@@ -155,6 +161,12 @@ export async function POST(request: Request) {
     .upload(fileName, buffer, { contentType });
 
   if (uploadError) {
+    console.error("community-sounds storage upload failed", {
+      url: rawUrl,
+      title,
+      fileName,
+      message: uploadError.message
+    });
     return NextResponse.json(
       { error: `Storage upload failed: ${uploadError.message}` },
       { status: 500 }
@@ -181,6 +193,12 @@ export async function POST(request: Request) {
 
   if (dbError) {
     await supabase.storage.from(BUCKET_NAME).remove([fileName]);
+    console.error("community-sounds database insert failed", {
+      url: rawUrl,
+      title,
+      fileName,
+      message: dbError.message
+    });
     return NextResponse.json(
       { error: `Database insert failed: ${dbError.message}` },
       { status: 500 }
