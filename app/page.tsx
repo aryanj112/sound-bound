@@ -1,150 +1,75 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const DEFAULT_AUDIO = "/vine-boom.mp3";
+type Sound = {
+  id: string;
+  label: string;
+  emoji: string;
+  src: string;
+};
+
+const SOUNDS: Sound[] = [
+  { id: "vine-boom", label: "Vine Boom", emoji: "💥", src: "/sounds/vine-boom.mp3" },
+  { id: "airhorn", label: "Airhorn", emoji: "📣", src: "/sounds/airhorn.mp3" },
+  { id: "dun-dun-dun", label: "Dun Dun Dun", emoji: "😮", src: "/sounds/dun-dun-dun.mp3" },
+  { id: "fahhh", label: "Fahhh", emoji: "😵", src: "/sounds/fahhh.mp3" },
+  { id: "fortnite-death", label: "Fortnite Death", emoji: "🎮", src: "/sounds/fortnite-death.mp3" },
+  { id: "rizz", label: "Rizz", emoji: "😏", src: "/sounds/rizz.mp3" },
+  { id: "spongebob-fail", label: "Spongebob Fail", emoji: "🫠", src: "/sounds/spongebob-fail.mp3" },
+  { id: "among-us-imposter", label: "Among Us", emoji: "ඞ", src: "/sounds/among-us-imposter.mp3" }
+];
 
 export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
-  const [audioSource, setAudioSource] = useState(DEFAULT_AUDIO);
-  const [customUrl, setCustomUrl] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [message, setMessage] = useState(
-    "Using the built-in Vine Boom file."
-  );
+  const [activeSound, setActiveSound] = useState<string | null>(null);
 
   useEffect(() => {
-    audioRef.current = new Audio(DEFAULT_AUDIO);
+    audioRef.current = new Audio();
     audioRef.current.preload = "auto";
 
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => setActiveSound(null);
     audioRef.current.addEventListener("ended", handleEnded);
 
     return () => {
       audioRef.current?.pause();
       audioRef.current?.removeEventListener("ended", handleEnded);
-
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-      }
     };
   }, []);
 
-  const swapSource = (nextSource: string, nextMessage: string) => {
-    setAudioSource(nextSource);
-    setMessage(nextMessage);
-    setIsPlaying(false);
-
+  const handlePlay = async (sound: Sound) => {
     if (!audioRef.current) {
       return;
     }
 
     audioRef.current.pause();
-    audioRef.current.src = nextSource;
-    audioRef.current.load();
-  };
-
-  const handlePlay = async () => {
-    if (!audioRef.current) {
-      return;
-    }
-
+    audioRef.current.src = sound.src;
     audioRef.current.currentTime = 0;
     await audioRef.current.play();
-    setIsPlaying(true);
-  };
-
-  const handleUrlApply = () => {
-    const nextUrl = customUrl.trim();
-
-    if (!nextUrl) {
-      swapSource(DEFAULT_AUDIO, "Using the built-in Vine Boom file.");
-      return;
-    }
-
-    try {
-      const parsed = new URL(nextUrl);
-      swapSource(parsed.toString(), "Using your custom audio URL.");
-    } catch {
-      setMessage("That link is not a valid direct audio URL.");
-    }
-  };
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-
-    const nextObjectUrl = URL.createObjectURL(file);
-    objectUrlRef.current = nextObjectUrl;
-    swapSource(nextObjectUrl, `Using uploaded file: ${file.name}`);
-    event.target.value = "";
+    setActiveSound(sound.id);
   };
 
   return (
     <main className="page-shell">
-      <section className="vine-panel">
-        <p className="vine-kicker">Vine Boom</p>
-        <button
-          className={`vine-button ${isPlaying ? "vine-button-active" : ""}`}
-          onClick={() => void handlePlay()}
-          type="button"
-        >
-          <span className="vine-emoji" aria-hidden="true">
-            💥
-          </span>
-          <span className="vine-title">Play Vine Boom</span>
-          <span className="vine-caption">
-            {isPlaying ? "Playing now" : "Tap for impact"}
-          </span>
-        </button>
+      <section className="soundboard" aria-label="Meme soundboard">
+        {SOUNDS.map((sound) => {
+          const isActive = activeSound === sound.id;
 
-        <p className="vine-message">{message}</p>
-      </section>
-
-      <section className="custom-panel">
-        <h2>Replace the sound</h2>
-        <p className="custom-copy">
-          Paste a direct audio file link you control, or upload your own MP3.
-          I did not add YouTube-to-MP3 conversion.
-        </p>
-
-        <label className="field-label" htmlFor="audio-url">
-          Direct audio URL
-        </label>
-        <div className="url-row">
-          <input
-            id="audio-url"
-            className="audio-input"
-            onChange={(event) => setCustomUrl(event.target.value)}
-            placeholder="https://example.com/sound.mp3"
-            type="url"
-            value={customUrl}
-          />
-          <button className="apply-button" onClick={handleUrlApply} type="button">
-            Use link
-          </button>
-        </div>
-
-        <label className="upload-button" htmlFor="audio-file">
-          Upload MP3
-        </label>
-        <input
-          accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg"
-          className="file-input"
-          id="audio-file"
-          onChange={handleFileChange}
-          type="file"
-        />
-
-        <p className="helper-text">Current source: {audioSource}</p>
+          return (
+            <button
+              key={sound.id}
+              aria-label={`Play ${sound.label}`}
+              className={`sound-card ${isActive ? "sound-card-active" : ""}`}
+              onClick={() => void handlePlay(sound)}
+              type="button"
+            >
+              <span className="sound-emoji" aria-hidden="true">
+                {sound.emoji}
+              </span>
+              <span className="sound-label">{sound.label}</span>
+            </button>
+          );
+        })}
       </section>
     </main>
   );
