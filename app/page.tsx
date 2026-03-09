@@ -31,9 +31,7 @@ const CORE_SOUNDS: Sound[] = [
   { id: "among-us-imposter", label: "Among Us", emoji: "ඞ", src: "/sounds/among-us-imposter.mp3" }
 ];
 
-const COMMUNITY_API_URL =
-  process.env.NEXT_PUBLIC_COMMUNITY_API_URL ??
-  "http://127.0.0.1:5000/community-sounds";
+const COMMUNITY_API_URL = "/api/community-sounds";
 
 export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -42,7 +40,7 @@ export default function Page() {
   const [url, setUrl] = useState("");
   const [submitState, setSubmitState] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [submitMessage, setSubmitMessage] = useState(
-    "Paste a link to add a community sound."
+    "Paste a link to submit a community sound."
   );
 
   useEffect(() => {
@@ -188,7 +186,7 @@ export default function Page() {
           <div className="community-empty">
             <p>No community sounds yet.</p>
             <p>
-              Submit a link and your Flask backend can add it to Supabase.
+              Community sounds will appear here after they are added to Supabase.
             </p>
           </div>
         )}
